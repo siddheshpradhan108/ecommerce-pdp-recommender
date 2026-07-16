@@ -2,11 +2,9 @@
 
 **Two-Tower retrieval → FAISS ANN → LightGBM LambdaRank**
 
-End-to-end, production-shaped simulation of the system behind the resume bullet:
+A hands-on build of a **two-stage product recommendation system** for e-commerce **Product Detail Pages (PDPs)** — the “similar items” and “customers also bought” style carousels you see when browsing a large online catalog.
 
-> *"Engineered a two-stage product recommendation system using Two-Tower retrieval and a LightGBM ranker for large-scale e-commerce product pages."*
-
-This package trains and serves **personalized product recommendations for Product Detail Pages (PDPs)** — the Same Items / “customers also bought” style carousels on a large e-commerce site. It does **not** ship proprietary retailer logs. It uses a **structurally faithful synthetic catalog + engagement funnel** that mirrors production PDP personalization stacks, so you can run the full system locally and speak to every design choice in interviews.
+I built this to deepen my recommender-systems craft: dual-encoder retrieval, ANN serving, learning-to-rank, and the practical latency constraints of scoring millions of SKUs. The pipeline trains end-to-end on a **synthetic retail catalog and engagement funnel** (proprietary retailer logs aren’t public) shaped like production feature stores, so the engineering choices stay close to real multi-stage stacks.
 
 ---
 
@@ -21,7 +19,7 @@ This package trains and serves **personalized product recommendations for Produc
 7. [Quickstart](#7-quickstart)
 8. [CLI reference](#8-cli-reference)
 9. [Evaluation](#9-evaluation)
-10. [Interview talking points](#10-interview-talking-points)
+10. [Design decisions](#10-design-decisions)
 11. [Repository layout](#11-repository-layout)
 12. [Relationship to published industry work](#12-relationship-to-published-industry-work)
 
@@ -318,16 +316,16 @@ Expect **two-stage ≥ retrieval** on average when Customer Understanding featur
 
 ---
 
-## 10. Interview talking points
+## 10. Design decisions
 
-**60-second pitch**
+**How the system fits together**
 
-> On product pages we can’t score the full catalog per request. I built a two-stage system: a Two-Tower dual encoder embeds the shopper context and the anchor product, retrieves the top few hundred SKUs via FAISS, then a LightGBM LambdaRank model reorders those candidates using retrieval scores plus Customer Understanding features — brand affinity, price-band match, co-purchase strength, and catalog quality signals. Serving encodes context online, looks up a precomputed item index, ranks on CPU, and applies business filters. Offline we measure NDCG@K for retrieval-only vs two-stage and split sparse vs dense users.
+On product pages you can’t score the full catalog per request. A Two-Tower dual encoder embeds the shopper context and the anchor product, retrieves the top few hundred SKUs via FAISS, then a LightGBM LambdaRank model reorders those candidates using retrieval scores plus Customer Understanding features — brand affinity, price-band match, co-purchase strength, and catalog quality signals. Serving encodes context online, looks up a precomputed item index, ranks on CPU, and applies business filters. Offline evaluation compares NDCG@K for retrieval-only vs two-stage and splits sparse vs dense users.
 
-**Hard questions ready**
+**Why these choices**
 
-| Question | Answer sketch |
-|----------|----------------|
+| Question | Rationale |
+|----------|-----------|
 | Why not one big cross-encoder? | Too slow at catalog scale; cross-attention over millions of items isn’t feasible in PDP latency SLOs. |
 | Why trees after neural retrieval? | Listwise NDCG objective, rich tabular cross-features, fast CPU inference, independent iteration from retrieval. |
 | Cold-start item? | Item tower uses brand/category/price — new SKUs get embeddings without collaborative history. |
@@ -346,7 +344,7 @@ ecommerce_pdp_recommender/
 ├── requirements.txt
 ├── pyproject.toml
 ├── configs/
-│   ├── default.yaml          # Portfolio-scale defaults
+│   ├── default.yaml          # Full-scale defaults
 │   └── smoke.yaml            # CI / quick local run
 ├── scripts/run_pipeline.py
 ├── src/ecommerce_rec/
@@ -378,4 +376,4 @@ This implementation is an **architecture-faithful open simulation** of productio
 
 MIT — see [LICENSE](LICENSE).
 
-Synthetic data is for education and portfolio demonstration only. Do not present metrics from this dataset as production results from any retailer.
+Synthetic data is for learning and demonstration only. Do not present metrics from this dataset as production results from any retailer.
