@@ -14,7 +14,7 @@ data:
   # Temporal holdout fraction (last portion of timeline = test)
   test_fraction: 0.15
   min_events_per_user: 5
-  # Implicit engagement weights (engagement-weighted funnel (EBR-style))
+  # Implicit engagement weights (funnel)
   weight_impression: 0.001
   weight_click: 0.01
   weight_atc: 0.1

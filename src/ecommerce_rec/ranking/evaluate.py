@@ -92,7 +92,7 @@ def evaluate(cfg: ProjectConfig) -> dict:
             retrieved = set(cands)
             recall = len(positives & retrieved) / max(len(positives), 1)
             metrics["recall_at_k"].append(float(recall))
-            # Include missing positives so NDCG is well-defined (industry offline eval style)
+            # Include missing positives so NDCG is well-defined on the candidate list
             for p in positives:
                 if p not in cands:
                     cands.append(p)

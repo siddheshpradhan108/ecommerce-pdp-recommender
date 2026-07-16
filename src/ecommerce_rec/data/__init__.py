@@ -5,7 +5,7 @@ from dataclasses import dataclass
 import pandas as pd
 
 
-# Event types mirroring a large-retailer engagement funnel
+# Event types for the synthetic engagement funnel
 EVENT_IMPRESSION = "impression"
 EVENT_CLICK = "click"
 EVENT_ATC = "add_to_cart"

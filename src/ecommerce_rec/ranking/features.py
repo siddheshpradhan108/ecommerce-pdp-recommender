@@ -15,7 +15,7 @@ POSITIVE_EVENTS = {EVENT_CLICK, EVENT_ATC, EVENT_PURCHASE}
 
 @dataclass
 class CustomerUnderstanding:
-    """SPIR-style explicit prefs: brand affinity + price affinity per category."""
+    """Explicit prefs: brand affinity + price affinity per category."""
 
     # user_id -> brand_id -> score
     brand_affinity: dict[int, dict[int, float]]

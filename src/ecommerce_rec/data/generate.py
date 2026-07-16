@@ -1,10 +1,8 @@
-"""Synthetic large-retailer catalog and PDP engagement logs.
+"""Synthetic e-commerce catalog and PDP engagement logs for local training.
 
-Why synthetic?
-  Production behavioral logs are proprietary. This generator produces a
-  structurally faithful proxy: category/brand catalog, funnel events, session-
-  anchored PDP views, and co-purchase graphs — enough to train Two-Tower + LGBM
-  end-to-end and demo production architecture choices.
+Generates category/brand catalog rows, funnel events (impression → purchase),
+session-anchored PDP views, and co-purchase edges so Two-Tower + LightGBM can
+be trained end-to-end without external datasets.
 """
 
 from __future__ import annotations
@@ -47,7 +45,7 @@ def _make_products(cfg: DataConfig, rng: np.random.Generator) -> pd.DataFrame:
     base = rng.lognormal(mean=2.8, sigma=0.7, size=n)
     cat_mult = 1.0 + 0.15 * (cat % 5)
     price = np.round(base * cat_mult, 2)
-    # Price bands within category (SPIR-style 5 buckets)
+    # Price bands within category (5 buckets)
     price_band = np.zeros(n, dtype=np.int32)
     for c in range(cfg.n_categories):
         mask = cat == c
@@ -135,7 +133,7 @@ def _generate_events(
     users: pd.DataFrame,
     rng: np.random.Generator,
 ) -> tuple[pd.DataFrame, pd.DataFrame]:
-    """Simulate PDP sessions: user views anchor, then interacts with recommendations / catalog."""
+    """Generate PDP sessions: user views an anchor, then interacts with recommendations / catalog."""
     rows: list[dict] = []
     co_counts: dict[tuple[int, int], int] = {}
     event_id = 0

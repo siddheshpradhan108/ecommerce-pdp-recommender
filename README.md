@@ -2,9 +2,9 @@
 
 **Two-Tower retrieval → FAISS ANN → LightGBM LambdaRank**
 
-A hands-on build of a **two-stage product recommendation system** for e-commerce **Product Detail Pages (PDPs)** — the “similar items” and “customers also bought” style carousels you see when browsing a large online catalog.
+An end-to-end **two-stage recommender** for e-commerce **Product Detail Pages (PDPs)** — ranking substitutes and complements for the item a shopper is viewing (similar items, bought-also-bought, and related carousels).
 
-I built this to deepen my recommender-systems craft: dual-encoder retrieval, ANN serving, learning-to-rank, and the practical latency constraints of scoring millions of SKUs. The pipeline trains end-to-end on a **synthetic retail catalog and engagement funnel** (proprietary retailer logs aren’t public) shaped like production feature stores, so the engineering choices stay close to real multi-stage stacks.
+The stack pairs a **Two-Tower dual encoder** for fast candidate retrieval with a **LightGBM LambdaRank** model for precise re-ranking, plus a FAISS ANN index and a small serving layer. Training runs on a built-in **synthetic catalog and engagement funnel** so the full pipeline is reproducible without private datasets.
 
 ---
 
@@ -21,7 +21,7 @@ I built this to deepen my recommender-systems craft: dual-encoder retrieval, ANN
 9. [Evaluation](#9-evaluation)
 10. [Design decisions](#10-design-decisions)
 11. [Repository layout](#11-repository-layout)
-12. [Relationship to published industry work](#12-relationship-to-published-industry-work)
+12. [Related reading](#12-related-reading)
 
 ---
 
@@ -53,7 +53,7 @@ Retail-scale catalogs are **tens of millions of SKUs**. Scoring every SKU with a
 | **Retrieval** | Find ~100–500 *plausible* candidates | Whole catalog via ANN | ~1–5 ms |
 | **Ranking** | Order those candidates for *this user + this anchor* | Hundreds of rows | ~5–20 ms |
 
-This matches the published **SPIR**-style pattern used in large retail personalization: keep a strong recall set, then personalize with a re-ranker using **Customer Understanding** (brand, price, …).
+The multi-stage pattern is deliberate: keep a strong recall set, then personalize with a re-ranker that uses preference features (brand, price, …).
 
 ---
 
@@ -62,7 +62,7 @@ This matches the published **SPIR**-style pattern used in large retail personali
 ```mermaid
 flowchart TB
   subgraph Offline
-    D[Synthetic / warehouse events]
+    D[Synthetic events]
     TT[Train Two-Tower]
     EMB[Encode all items]
     FAISS[Build FAISS index]
@@ -97,7 +97,7 @@ flowchart TB
 | `ecommerce_rec.data` | Schema, synthetic generator, temporal split, engagement weights |
 | `ecommerce_rec.retrieval` | Two-Tower model, InfoNCE training, FAISS index |
 | `ecommerce_rec.ranking` | Customer Understanding features, LambdaRank train/eval |
-| `ecommerce_rec.serving` | Production-shaped `PDPRecommender.recommend()` |
+| `ecommerce_rec.serving` | `PDPRecommender.recommend()` inference path |
 | `ecommerce_rec.cli` | One CLI for the full lifecycle |
 
 ---
@@ -106,7 +106,7 @@ flowchart TB
 
 ### Why synthetic data?
 
-Retailers do **not** publish full PDP behavioral logs for training. Production papers on EBR, SPIR, and similar-item GNN systems use proprietary data. This project generates a **proxy** with the same *shapes* you’d find in a feature store / event warehouse:
+Public catalogs rarely include full PDP session funnels at the fidelity needed to train retrieval + ranking together. This repo ships a **synthetic generator** that creates catalog metadata, funnel events, and co-purchase edges with the same table shapes you’d wire into a feature store — enough to exercise the whole system locally.
 
 ### Tables
 
@@ -117,11 +117,11 @@ Retailers do **not** publish full PDP behavioral logs for training. Production p
 | `item_id` | SKU surrogate key |
 | `title` | Text title (category + brand) |
 | `brand_id`, `category_id` | Taxonomy |
-| `price`, `price_band` | Raw price + SPIR-style 5-band within category |
+| `price`, `price_band` | Raw price + 5-band within category |
 | `avg_rating`, `n_reviews` | Social proof |
 | `in_stock` | Inventory flag for serving filters |
 
-**`users`** — customer priors (latent prefs used only to *simulate* behavior)
+**`users`** — latent preference priors used only when generating events
 
 | Column | Meaning |
 |--------|---------|
@@ -139,7 +139,9 @@ Retailers do **not** publish full PDP behavioral logs for training. Production p
 
 **`co_purchase`** — undirected edges `(item_a, item_b, count)` for item–item features.
 
-### Engagement labels (EBR-style weights)
+### Engagement labels
+
+Weighted funnel scores used for retrieval pair construction:
 
 ```
 weight = 0.001·impressions + 0.01·clicks + 0.1·ATC + 1.0·orders
@@ -211,7 +213,7 @@ For each training query `(user, anchor)`:
 3. Sample negatives from non-engaged candidates  
 4. Group rows by query for **LambdaRank** (`objective: lambdarank`)
 
-LambdaRank directly targets ranking metrics (NDCG), which is why tree rankers remain standard after neural retrieval in industry stacks.
+LambdaRank directly targets ranking metrics (NDCG), which is why tree rankers pair well with neural retrieval.
 
 ### Artifacts
 
@@ -331,7 +333,7 @@ On product pages you can’t score the full catalog per request. A Two-Tower dua
 | Cold-start item? | Item tower uses brand/category/price — new SKUs get embeddings without collaborative history. |
 | Cold-start user? | History mean masks out; user id emb + anchor still retrieve; ranker falls back to item–item features. |
 | Leakage? | Strict temporal split; history only uses events **before** the query timestamp. |
-| How would this change with real production data? | Same pipelines; swap generator for warehouse extracts; add omnichannel events, margin/inventory features, online A/B on ATC/GMV. |
+| How would this change with logged production traffic? | Same pipelines; swap the generator for warehouse extracts; add omnichannel events, margin/inventory features, and online A/B on ATC/GMV. |
 
 ---
 
@@ -360,15 +362,15 @@ ecommerce_pdp_recommender/
 
 ---
 
-## 12. Relationship to published industry work
+## 12. Related reading
 
-This implementation is an **architecture-faithful open simulation** of production PDP recommenders at large e-commerce retailers — guided by public research, not a claim of access to any internal systems:
+Design choices in this repo draw on public recommender and retrieval literature:
 
-| Public work | What we mirror |
-|-------------|----------------|
-| [SPIR (Sinha et al., 2020)](https://irsworkshop.github.io/2020/publications/paper_13_%20Sinha_SPIR.pdf) | Recall set + ML re-ranker; brand/price Customer Understanding |
+| Paper | Ideas used here |
+|-------|-----------------|
+| [SPIR (Sinha et al., 2020)](https://irsworkshop.github.io/2020/publications/paper_13_%20Sinha_SPIR.pdf) | Recall set + ML re-ranker; brand/price preference features |
 | [Embedding-based retrieval / EBR (Lin et al., 2024)](https://arxiv.org/pdf/2408.04884) | Dual-encoder retrieval, engagement-weighted labels, ANN serving |
-| [GNN-GMVO Similar Items (2023)](https://arxiv.org/abs/2310.17732) | PDP similar-item surface; NDCG@8 reporting convention |
+| [GNN-GMVO Similar Items (2023)](https://arxiv.org/abs/2310.17732) | PDP similar-item framing; NDCG@8 reporting convention |
 
 ---
 
@@ -376,4 +378,4 @@ This implementation is an **architecture-faithful open simulation** of productio
 
 MIT — see [LICENSE](LICENSE).
 
-Synthetic data is for learning and demonstration only. Do not present metrics from this dataset as production results from any retailer.
+Synthetic data is generated for this project. Offline metrics are for local experimentation only.
