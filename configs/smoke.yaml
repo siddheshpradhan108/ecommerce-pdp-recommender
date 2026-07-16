@@ -1,0 +1,56 @@
+# Tiny config for CI / local smoke tests (~2–5 minutes on CPU)
+
+paths:
+  data_dir: data
+  artifacts_dir: artifacts
+
+data:
+  n_users: 400
+  n_items: 300
+  n_categories: 8
+  n_brands: 30
+  seed: 42
+  test_fraction: 0.15
+  min_events_per_user: 5
+  weight_impression: 0.001
+  weight_click: 0.01
+  weight_atc: 0.1
+  weight_purchase: 1.0
+
+retrieval:
+  embed_dim: 32
+  hidden_dim: 64
+  id_embed_dim: 16
+  batch_size: 128
+  epochs: 2
+  learning_rate: 0.002
+  temperature: 0.07
+  hard_negatives: 3
+  candidate_k: 40
+  max_history: 10
+  device: cpu
+
+faiss:
+  index_type: flat
+  nlist: 16
+  nprobe: 4
+
+ranking:
+  negatives_per_positive: 8
+  max_train_queries: 800
+  max_eval_queries: 200
+  learning_rate: 0.08
+  num_leaves: 31
+  min_data_in_leaf: 10
+  feature_fraction: 0.9
+  bagging_fraction: 0.9
+  bagging_freq: 1
+  max_rounds: 80
+  early_stopping_rounds: 15
+  ndcg_eval_at: [8, 10]
+  sparse_threshold: 8
+
+serving:
+  top_k: 8
+  filter_out_of_stock: true
+  dedupe_same_brand_variants: true

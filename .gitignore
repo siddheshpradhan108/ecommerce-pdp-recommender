@@ -1,0 +1,38 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.egg-info/
+.eggs/
+dist/
+build/
+.venv/
+venv/
+.env
+.python-version
+.pytest_cache/
+
+# IDE
+.idea/
+.vscode/
+*.swp
+.DS_Store
+
+# Project artifacts & data (regenerable)
+artifacts/**
+!artifacts/.gitkeep
+data/raw/
+data/processed/
+*.pkl
+*.pt
+*.bin
+*.index
+*.json
+!configs/*.yaml
+
+# Notebooks / caches
+.ipynb_checkpoints/
+.mypy_cache/
+.ruff_cache/
+htmlcov/
+.coverage
